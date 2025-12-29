@@ -1,66 +1,93 @@
-import { showPhotos } from './thumbnails.js';
+import { displayPhotoCollection } from './thumbnails.js';
 
-const filters = document.querySelector('.img-filters');
-const filterButtons = filters.querySelectorAll('.img-filters__button');
+const RANDOM_PHOTOS_LIMIT = 10;
+const FILTER_DELAY = 500;
+const FilterType = {
+  DEFAULT: 'filter-default',
+  RANDOM: 'filter-random',
+  DISCUSSED: 'filter-discussed'
+};
 
-let allPhotos = [];
-let currentFilter = 'default';
-let timeoutId = null;
+let allUserPhotos = [];
+let activeFilter = FilterType.DEFAULT;
+let filterTimeout = null;
 
-function getRandomPhotos(photos) {
-  const shuffled = [...photos].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 10);
-}
+function selectRandomPhotos(photos) {
+  const photoIndices = new Set();
+  const selectedPhotos = [];
 
-function getDiscussedPhotos(photos) {
-  return [...photos].sort((a, b) => b.comments.length - a.comments.length);
-}
-
-function applyFilter() {
-  let filteredPhotos = [];
-
-  if (currentFilter === 'random') {
-    filteredPhotos = getRandomPhotos(allPhotos);
-  } else if (currentFilter === 'discussed') {
-    filteredPhotos = getDiscussedPhotos(allPhotos);
-  } else {
-    filteredPhotos = allPhotos;
+  if (photos.length <= RANDOM_PHOTOS_LIMIT) {
+    return [...photos];
   }
 
-  showPhotos(filteredPhotos);
+  while (photoIndices.size < RANDOM_PHOTOS_LIMIT) {
+    const randomIndex = Math.floor(Math.random() * photos.length);
+    if (!photoIndices.has(randomIndex)) {
+      photoIndices.add(randomIndex);
+      selectedPhotos.push(photos[randomIndex]);
+    }
+  }
+
+  return selectedPhotos;
 }
 
-function debounceFilter() {
-  clearTimeout(timeoutId);
-  timeoutId = setTimeout(applyFilter, 500);
+function sortByComments(photos) {
+  return [...photos].sort((firstPhoto, secondPhoto) =>
+    secondPhoto.comments.length - firstPhoto.comments.length
+  );
 }
 
-function onFilterClick(evt) {
-  const button = evt.target;
+function applyActiveFilter() {
+  let filteredResults;
 
-  if (!button.classList.contains('img-filters__button')) {
+  if (activeFilter === FilterType.RANDOM) {
+    filteredResults = selectRandomPhotos(allUserPhotos);
+  } else if (activeFilter === FilterType.DISCUSSED) {
+    filteredResults = sortByComments(allUserPhotos);
+  } else {
+    filteredResults = allUserPhotos;
+  }
+
+  displayPhotoCollection(filteredResults);
+}
+
+function delayFilterUpdate() {
+  if (filterTimeout) {
+    clearTimeout(filterTimeout);
+  }
+
+  filterTimeout = setTimeout(() => {
+    applyActiveFilter();
+    filterTimeout = null;
+  }, FILTER_DELAY);
+}
+
+function handleFilterButtonClick(clickEvent) {
+  const clickedButton = clickEvent.target;
+
+  if (!clickedButton.classList.contains('img-filters__button')) {
     return;
   }
 
-  filterButtons.forEach((btn) => {
-    btn.classList.remove('img-filters__button--active');
+  document.querySelectorAll('.img-filters__button').forEach((button) => {
+    button.classList.remove('img-filters__button--active');
   });
 
-  button.classList.add('img-filters__button--active');
-
-  currentFilter = button.id.replace('filter-', '');
-
-  debounceFilter();
+  clickedButton.classList.add('img-filters__button--active');
+  activeFilter = clickedButton.id;
+  delayFilterUpdate();
 }
 
-function initFilters(photos) {
-  allPhotos = photos;
+function initializePhotoFilters(photos) {
+  allUserPhotos = photos;
 
-  filters.classList.remove('img-filters--inactive');
+  const filterSection = document.querySelector('.img-filters');
+  filterSection.classList.remove('img-filters--inactive');
 
+  const filterButtons = document.querySelectorAll('.img-filters__button');
   filterButtons.forEach((button) => {
-    button.addEventListener('click', onFilterClick);
+    button.addEventListener('click', handleFilterButtonClick);
   });
 }
 
-export { initFilters };
+export { initializePhotoFilters };

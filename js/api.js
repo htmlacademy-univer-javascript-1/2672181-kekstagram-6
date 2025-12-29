@@ -1,71 +1,88 @@
-const SERVER_URL = 'https://29.javascript.htmlacademy.pro/kekstagram';
+const API_BASE_URL = 'https://29.javascript.htmlacademy.pro/kekstagram/';
 
-const ErrorText = {
-  GET_DATA: 'Не удалось загрузить фотографии',
-  SEND_DATA: 'Ошибка отправки формы',
+const ErrorMessage = {
+  LOAD_FAILED: 'Не удалось загрузить фотографии',
+  UPLOAD_FAILED: 'Ошибка отправки формы'
 };
 
-async function loadPhotos() {
-  try {
-    const response = await fetch(`${SERVER_URL}/data`);
+const MAX_ATTEMPTS = 3;
+const RETRY_WAIT_TIME = 1000;
 
-    if (!response.ok) {
-      throw new Error(ErrorText.GET_DATA);
+async function fetchWithRetries(url, options = {}, attemptsLeft = MAX_ATTEMPTS) {
+  try {
+    const serverResponse = await fetch(url, options);
+
+    if (!serverResponse.ok) {
+      throw new Error(`HTTP ${serverResponse.status}`);
     }
 
-    return await response.json();
-  } catch (error) {
-    throw new Error(ErrorText.GET_DATA);
+    return await serverResponse.json();
+  } catch (fetchError) {
+    if (attemptsLeft > 0) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, RETRY_WAIT_TIME);
+      });
+      return fetchWithRetries(url, options, attemptsLeft - 1);
+    }
+    throw fetchError;
   }
 }
 
-async function sendForm(formData) {
+async function loadUserPhotos() {
   try {
-    const response = await fetch(SERVER_URL, {
+    return await fetchWithRetries(`${API_BASE_URL}data`);
+  } catch (loadError) {
+    throw new Error(ErrorMessage.LOAD_FAILED);
+  }
+}
+
+function displayUploadError() {
+  const errorTemplate = document.querySelector('#error');
+  const errorElement = errorTemplate.content.cloneNode(true);
+  document.body.append(errorElement);
+
+  const errorMessage = document.querySelector('.error');
+  const closeButton = errorMessage.querySelector('.error__button');
+
+  function removeErrorMessage() {
+    errorMessage.remove();
+    document.removeEventListener('keydown', handleEscapeKey);
+    document.removeEventListener('click', handleOutsideClick);
+  }
+
+  function handleEscapeKey(keyboardEvent) {
+    if (keyboardEvent.key === 'Escape') {
+      removeErrorMessage();
+    }
+  }
+
+  function handleOutsideClick(clickEvent) {
+    if (!errorMessage.contains(clickEvent.target)) {
+      removeErrorMessage();
+    }
+  }
+
+  closeButton.addEventListener('click', removeErrorMessage);
+  document.addEventListener('keydown', handleEscapeKey);
+  document.addEventListener('click', handleOutsideClick);
+}
+
+async function uploadFormData(formData) {
+  try {
+    const serverResponse = await fetch(API_BASE_URL, {
       method: 'POST',
-      body: formData,
+      body: formData
     });
 
-    if (!response.ok) {
-      throw new Error(ErrorText.SEND_DATA);
+    if (!serverResponse.ok) {
+      throw new Error(ErrorMessage.UPLOAD_FAILED);
     }
 
-    return await response.json();
-  } catch (error) {
-    showUploadErrorMessage();
-    throw error;
+    return await serverResponse.json();
+  } catch (uploadError) {
+    displayUploadError();
+    throw new Error(ErrorMessage.UPLOAD_FAILED);
   }
 }
 
-function showUploadErrorMessage() {
-  const template = document.querySelector('#error');
-  const element = template.content.cloneNode(true);
-  document.body.appendChild(element);
-
-  const messageElement = document.querySelector('.error');
-  const closeButton = messageElement.querySelector('.error__button');
-
-  function closeMessage() {
-    messageElement.remove();
-    document.removeEventListener('keydown', onEscPress);
-    document.removeEventListener('click', onClickOutside);
-  }
-
-  function onEscPress(evt) {
-    if (evt.key === 'Escape') {
-      closeMessage();
-    }
-  }
-
-  function onClickOutside(evt) {
-    if (!messageElement.contains(evt.target)) {
-      closeMessage();
-    }
-  }
-
-  closeButton.addEventListener('click', closeMessage);
-  document.addEventListener('keydown', onEscPress);
-  document.addEventListener('click', onClickOutside);
-}
-
-export { loadPhotos, sendForm };
+export { loadUserPhotos as loadPhotos, uploadFormData as sendForm };

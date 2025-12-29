@@ -1,43 +1,48 @@
 import { showBigPhoto } from './fullscreen.js';
 
-const picturesContainer = document.querySelector('.pictures');
-const pictureTemplate = document.querySelector('#picture').content;
+const photosContainer = document.querySelector('.pictures');
+const photoTemplate = document.querySelector('#picture').content;
 
-function createPhotoElement(photo) {
-  const element = pictureTemplate.cloneNode(true);
-  const img = element.querySelector('.picture__img');
-  const likes = element.querySelector('.picture__likes');
-  const comments = element.querySelector('.picture__comments');
+function createPhotoThumbnail(photoInfo) {
+  const thumbnailElement = photoTemplate.cloneNode(true);
+  const thumbnailImage = thumbnailElement.querySelector('.picture__img');
+  const likesElement = thumbnailElement.querySelector('.picture__likes');
+  const commentsElement = thumbnailElement.querySelector('.picture__comments');
 
-  img.src = photo.url;
-  img.alt = photo.description;
-  likes.textContent = photo.likes;
-  comments.textContent = photo.comments.length;
+  thumbnailImage.src = photoInfo.url;
+  thumbnailImage.alt = photoInfo.description;
+  likesElement.textContent = photoInfo.likes;
+  commentsElement.textContent = photoInfo.comments.length;
 
-  element.querySelector('.picture').addEventListener('click', () => {
-    showBigPhoto(photo);
-  });
-  return element;
-}
-
-function clearPhotos() {
-  const pictures = picturesContainer.querySelectorAll('.picture');
-  pictures.forEach((picture) => picture.remove());
-}
-
-function showPhotos(photos) {
-  clearPhotos();
-
-  const fragment = document.createDocumentFragment();
-  photos.forEach((photo) => {
-    fragment.appendChild(createPhotoElement(photo));
+  const photoLink = thumbnailElement.querySelector('.picture');
+  photoLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    showBigPhoto(photoInfo);
   });
 
-  picturesContainer.appendChild(fragment);
+  return thumbnailElement;
 }
 
-function displayPhotos(photos) {
-  showPhotos(photos);
+function removeExistingThumbnails() {
+  const existingThumbnails = photosContainer.querySelectorAll('.picture');
+  existingThumbnails.forEach((thumbnail) => {
+    thumbnail.remove();
+  });
 }
 
-export { displayPhotos, showPhotos };
+function renderPhotoThumbnails(photosArray) {
+  removeExistingThumbnails();
+
+  const thumbnailsFragment = document.createDocumentFragment();
+  photosArray.forEach((photo) => {
+    thumbnailsFragment.appendChild(createPhotoThumbnail(photo));
+  });
+
+  photosContainer.appendChild(thumbnailsFragment);
+}
+
+function displayPhotoCollection(photosArray) {
+  renderPhotoThumbnails(photosArray);
+}
+
+export { renderPhotoThumbnails as displayPhotos, displayPhotoCollection };

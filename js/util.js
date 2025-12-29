@@ -1,14 +1,19 @@
-const getRandomInteger = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+function generateRandomInteger(minValue, maxValue) {
+  const lowerBound = Math.ceil(Math.min(Math.abs(minValue), Math.abs(maxValue)));
+  const upperBound = Math.floor(Math.max(Math.abs(minValue), Math.abs(maxValue)));
+  return Math.floor(Math.random() * (upperBound - lowerBound + 1)) + lowerBound;
+}
 
-const createIdGenerator = () => {
+function createIdGenerator() {
   let lastGeneratedId = 0;
-  return () => {
+  return function generateNextId() {
     lastGeneratedId += 1;
     return lastGeneratedId;
   };
-};
+}
 
-const getRandomArrayElement = (elements) => elements[getRandomInteger(0, elements.length - 1)];
+function getRandomElement(array) {
+  return array[generateRandomInteger(0, array.length - 1)];
+}
 
-export { getRandomInteger, createIdGenerator, getRandomArrayElement };
-
+export { generateRandomInteger, createIdGenerator, getRandomElement };
